@@ -1,0 +1,7 @@
+jupyter
+pandas
+numpy
+ghgforcing==0.1.6
+matplotlib
+seaborn
+watermark

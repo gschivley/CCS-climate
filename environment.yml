@@ -1,0 +1,16 @@
+name: ccs-timing
+channels:
+- defaults
+- conda-forge
+dependencies:
+- python=3.6
+- matplotlib
+- numpy
+- pandas
+- jupyter
+- seaborn
+- nb_conda_kernels
+
+- pip:
+  - ghgforcing==0.1.6
+  - watermark
