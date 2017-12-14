@@ -1,3 +1,5 @@
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/gschivley/CCS-climate/master)
+
 # Climate Benefits of Carbon Capture Depend on Timing and Methane Emission Uncertainty
 
 ## Setup
