@@ -12,5 +12,5 @@ dependencies:
 - nb_conda_kernels
 
 - pip:
-  - ghgforcing==0.1.6
+  - ghgforcing==0.1.7.1
   - watermark
