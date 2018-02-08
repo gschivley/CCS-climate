@@ -70,7 +70,7 @@ coal_emissions = {'90%': {'CO2':scpc_ccs_co2,
 
 def emissions(coal_emissions=coal_emissions, ng_emissions=ng_emissions,
               CCS_start=0, leakage_drop_by=10,
-              leak_values=range(1,6), year_to_90CSS=20, life=40):
+              leak_values=range(1,6), year_to_90CCS=20, life=40):
     """
     Create CO2 and CH4 emission functions for each power plant scenario. All
     natural gas scenarios include both constant leakage rates and leakage rates
@@ -130,7 +130,8 @@ def emissions(coal_emissions=coal_emissions, ng_emissions=ng_emissions,
         leakage_drop.loc[:,rate] = leak[rate]
         if rate != 'NGCC 1%':
             # Use linspace to interpolate between values
-            leakage_drop.loc[:leakage_drop_by,rate] = np.linspace(leak[rate], leak[rate]/2,
+            leakage_drop.loc[:leakage_drop_by,rate] = np.linspace(leak[rate],
+                                                                 leak[rate]/2,
                                                                  leakage_drop_by/tstep+1)
             leakage_drop.loc[leakage_drop_by:life,rate] = leak[rate]/2
             leakage_drop.loc[life:,rate] = 0
@@ -149,14 +150,15 @@ def emissions(coal_emissions=coal_emissions, ng_emissions=ng_emissions,
             df.loc[:,'CCS'] = ccs
             df.loc[:,'Leak'] = l
             df.loc[:,'CO2'] = ng_emissions[ccs]['Fixed']['CO2']
-            df.loc[:,'CH4'] = ng_emissions[ccs]['Leak']['CH4'] * leakage.loc[:,l].copy()
+            df.loc[:,'CH4'] = (ng_emissions[ccs]['Leak']['CH4']
+                               * leakage.loc[:,l].copy())
 
             # This gets complicated when accounting for delayed CCS start
             if CCS_start > 0:
                 df.loc[:CCS_start,'CO2'] = ng_emissions['0%']['Fixed']['CO2'] #*
                                             #np.ones_like(leakage.loc[:CCS_start,l]))
                 df.loc[:CCS_start,'CH4'] = ng_emissions['0%']['Leak']['CH4'] * leakage.loc[:CCS_start,l].copy()
-            df.loc[60:,['CO2', 'CH4']] = 0
+            df.loc[life:,['CO2', 'CH4']] = 0
             df_list.append(df)
 
             # Reduced methane
@@ -175,7 +177,7 @@ def emissions(coal_emissions=coal_emissions, ng_emissions=ng_emissions,
                 df.loc[:CCS_start,'CO2'] = ng_emissions['0%']['Fixed']['CO2'] #*
                                             #np.ones_like(leakage_drop.loc[:CCS_start,l]))
                 df.loc[:CCS_start,'CH4'] = ng_emissions['0%']['Leak']['CH4'] * leakage_drop.loc[:CCS_start,l].copy()
-            df.loc[60:,['CO2', 'CH4']] = 0
+            df.loc[life:,['CO2', 'CH4']] = 0
             df_list.append(df)
 
 
@@ -190,31 +192,46 @@ def emissions(coal_emissions=coal_emissions, ng_emissions=ng_emissions,
         df.loc[:,'Leak'] = 'SCPC'
         df.loc[:,'CO2'] = coal_emissions[ccs]['CO2']
         df.loc[:,'CH4'] = coal_emissions[ccs]['CH4']
-        df.loc[60:,['CO2', 'CH4']] = 0
+        df.loc[life:,['CO2', 'CH4']] = 0
 
         if CCS_start > 0:
             df.loc[:CCS_start,'CO2'] = coal_emissions['0%']['CO2']
             df.loc[:CCS_start,'CH4'] = coal_emissions['0%']['CH4']
         df_list.append(df)
 
+    # Concat all dataframes
     emissions_df = pd.concat(df_list)
 
     # Add one more scenario for CCS that goes from 16% to 90%
-    if year_to_90CSS > 0 and CCS_start == 0:
-        df = emissions_df.loc[emissions_df['CCS'] == '16%',:].copy()
-        df_90 = emissions_df.loc[(emissions_df['Fuel'] == 'Coal') & (emissions_df['CCS'] == '90%'),:].copy()
-        df.loc[year_to_90CSS:,['CO2', 'CH4']] = df_90.loc[year_to_90CSS:,['CO2', 'CH4']].copy()
-        df.loc[:,'CCS'] = '16%-90%'
-        emissions_df = pd.concat([emissions_df, df])
-        df_list.append(df)
+    # if year_to_90CCS > 0:# and CCS_start == 0:
+    df = emissions_df.loc[(emissions_df['Fuel'] == 'Coal') &
+                          (emissions_df['CCS'] == '16%'),:].copy()
+    df_90 = emissions_df.loc[(emissions_df['Fuel'] == 'Coal') &
+                             (emissions_df['CCS'] == '90%'),:].copy()
+
+    df.loc[year_to_90CCS:, ['CO2', 'CH4']] = (df_90.loc[year_to_90CCS:,
+                                                       ['CO2', 'CH4']])
+
+    df.loc[:year_to_90CCS, 'CO2'] = coal_emissions['16%']['CO2']
+    df.loc[:year_to_90CCS, 'CH4'] = coal_emissions['16%']['CH4']
+
+    df.loc[:,'CCS'] = '16%-90%'
+
+    # Concat the extra dataframe
+    emissions_df = pd.concat([emissions_df, df])
+        # df_list.append(df)
 
     # Set values in the Time column and reset index in both the large dataframe
     # and each of the individual dataframes
     emissions_df.loc[:,'Time'] = emissions_df.index
     emissions_df.reset_index(drop=True, inplace=True)
 
-    for df in df_list:
-        df.loc[:,'Time'] = df.index
-        df.reset_index(drop=True, inplace=True)
+    # Force numeric data types for emissions and start year
+    for col in ['CO2', 'CH4', 'Start year']:
+        emissions_df[col] = pd.to_numeric(emissions_df[col])
+
+    # for df in df_list:
+    #     df.loc[:,'Time'] = df.index
+    #     df.reset_index(drop=True, inplace=True)
 
     return emissions_df#, df_list
