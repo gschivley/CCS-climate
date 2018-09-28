@@ -4,11 +4,11 @@ channels:
 - conda-forge
 dependencies:
 - python=3.6
-- matplotlib
+- matplotlib=2.2
 - numpy
-- pandas
+- pandas=0.23
 - jupyter
-- seaborn
+- seaborn=0.8
 - nb_conda_kernels
 
 - pip:
